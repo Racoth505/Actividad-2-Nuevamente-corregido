@@ -132,15 +132,18 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
     nav_frame.grid(row=1, column=0, sticky="new", pady=10, padx=10)
     nav_frame.columnconfigure(1, weight=1)
 
-    # Cargar Íconos
+    # --- Cargar Íconos (INICIO DE CAMBIO) ---
+    # Usando los nombres de íconos de la vista de admin
     icons = {
-        "subjects": load_icon("icon_materias_prof.png"),
-        "add_activity": load_icon("icon_add_activity.png"),
-        "edit_activity": load_icon("icon_edit_activity.png"),
-        "delete_activity": load_icon("icon_delete_activity.png"),
-        "profile": load_icon("icon_perfil.png"),
+        "subjects": load_icon("icon_subjects.png"),
+        "add_activity": load_icon("icon_add_subject.png"),
+        "edit_activity": load_icon("icon_edit_subject.png"),
+        "delete_activity": load_icon("icon_delete.png"),
+        "profile": load_icon("icon_profile.png"),
         "salir": load_icon("icon_salir.png")
     }
+    # --- FIN DE CAMBIO ---
+
 
     # Crear Botones
     buttons_info = [
@@ -160,6 +163,9 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
             command=lambda v=view_name: show_professor_view(content_frame, user_data, v)  # Corregido
         )
         btn.grid(row=i, column=0, columnspan=2, sticky="ew", pady=5)
+        
+        btn.image = icon # <--- CORRECCIÓN 1: Anclaje de imagen
+        
         if i == 0:
             btn.state(['selected'])  # Marcar como seleccionado al inicio
         _nav_buttons[view_name] = btn
@@ -171,10 +177,15 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
 
     btn_perfil = ttk.Button(bottom_frame, text=" Perfil", style="Sidebar.TButton", image=icons.get("profile"), compound=tk.LEFT, command=lambda: show_professor_view(content_frame, user_data, "profile"))
     btn_perfil.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+    
+    btn_perfil.image = icons.get("profile") # <--- CORRECCIÓN 2: Anclaje de imagen
+    
     _nav_buttons["profile"] = btn_perfil
 
     btn_salir = ttk.Button(bottom_frame, text=" Salir", style="Sidebar.TButton", image=icons.get("salir"), compound=tk.LEFT, command=_logout_func)
     btn_salir.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+    
+    btn_salir.image = icons.get("salir") # <--- CORRECCIÓN 3: Anclaje de imagen
 
     # --- Área de Contenido ---
     content_area = ttk.Frame(root, padding=(20, 10))

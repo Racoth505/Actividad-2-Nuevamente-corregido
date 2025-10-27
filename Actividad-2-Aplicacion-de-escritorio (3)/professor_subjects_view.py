@@ -16,7 +16,7 @@ def create_professor_subjects_view(parent_frame, user_data, show_view_func):
     # --- Título ---
     ttk.Label(
         main_frame,
-        text="📚 Materias Asignadas",
+        text="Materias Asignadas",
         font=("Helvetica", 18, "bold"),
         style="TLabel"
     ).pack(pady=15, anchor="w", padx=15)

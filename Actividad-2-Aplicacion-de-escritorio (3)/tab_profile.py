@@ -14,7 +14,7 @@ def create_profile_tab(parent_frame, user_data, update_header_callback):
     profile_frame = ttk.Frame(parent_frame, style="Main.TFrame")
     # No pack aquí, se hará en student_main_view
 
-    ttk.Label(profile_frame, text="👤 Mi Perfil", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
+    ttk.Label(profile_frame, text="Mi Perfil", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
 
     center_frame = ttk.Frame(profile_frame, style="Main.TFrame")
     center_frame.pack(pady=10, padx=20, expand=True) # Centrar contenido

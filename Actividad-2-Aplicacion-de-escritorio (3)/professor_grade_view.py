@@ -17,7 +17,7 @@ def create_professor_grade_view(parent_frame, user_data, subject_id):
         ttk.Label(main_frame, text="Error: Materia no encontrada.", foreground='red', style="TLabel").pack(pady=20)
         return main_frame
 
-    ttk.Label(main_frame, text="📊 Calificaciones", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=(10,0), anchor='w', padx=10)
+    ttk.Label(main_frame, text="Calificaciones", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=(10,0), anchor='w', padx=10)
     ttk.Label(main_frame, text=f"{materia_details.get('nombre')} (ID: {subject_id})",
               font=("Helvetica", 12), style="TLabel", foreground="#007bff").pack(pady=(0, 15), anchor='w', padx=10)
 

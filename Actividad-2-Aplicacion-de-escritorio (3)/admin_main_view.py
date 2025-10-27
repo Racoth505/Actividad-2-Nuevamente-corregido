@@ -128,6 +128,7 @@ def create_admin_main_view(root, user_data, logout_func):
         "edit_subjects": load_icon("icon_edit_subject.png"),
         "edit_users": load_icon("icon_edit_user.png"),
         "assign_subject": load_icon("icon_assign.png"),
+        "users": load_icon("icon_usuarios.png"),
         "salir": load_icon("icon_salir.png")
     }
 

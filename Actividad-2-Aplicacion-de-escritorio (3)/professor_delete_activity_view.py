@@ -11,7 +11,7 @@ def create_professor_delete_activity_view(parent_frame, user_data):
     main_frame = ttk.Frame(parent_frame, style="Main.TFrame")
     # No pack
 
-    ttk.Label(main_frame, text="🗑️ Eliminar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
+    ttk.Label(main_frame, text="Eliminar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
 
     delete_frame = ttk.Frame(main_frame, style="Main.TFrame")
     delete_frame.pack(pady=10, padx=20, anchor='n')

@@ -11,7 +11,7 @@ def create_professor_edit_activity_view(parent_frame, user_data):
     main_frame = ttk.Frame(parent_frame, style="Main.TFrame")
     # No pack
 
-    ttk.Label(main_frame, text="✏️ Editar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
+    ttk.Label(main_frame, text="Editar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
 
     selection_frame = ttk.Frame(main_frame, style="Main.TFrame")
     selection_frame.pack(pady=10, padx=20, fill='x', anchor='n')
