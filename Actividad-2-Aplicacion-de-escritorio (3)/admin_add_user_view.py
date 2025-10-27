@@ -47,7 +47,15 @@ def create_admin_add_user_view(parent_frame, user_data):
 
     # Rol
     ttk.Label(form_area, text="Rol del Usuario", style="TLabel").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-    combo_rol = ttk.Combobox(form_area, textvariable=rol_var, values=["profesor","alumno"], state="readonly", width=37)
+    combo_rol = ttk.Combobox(
+    form_area,
+    textvariable=rol_var,
+    values=["admin", "profesor", "alumno"],  # incluir admin
+    state="readonly",
+    width=37
+)
+
+
     combo_rol.grid(row=0, column=1, sticky="ew", pady=5, padx=5, columnspan=2)
 
     # Campos

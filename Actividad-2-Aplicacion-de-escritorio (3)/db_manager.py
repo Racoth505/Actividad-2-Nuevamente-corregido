@@ -131,7 +131,13 @@ def create_user(username, password, role, nombre_completo, apellidos, telefono, 
     """Creates a new user (Professor or Student). Returns the new user's ID or None."""
     pass_hash = hash_password(password)
     if not ruta_foto:
-        ruta_foto = "assets/default_prof.png" if role == "profesor" else "assets/default_student.png"
+        default_map = {
+            "admin": "assets/default_user.png",
+            "profesor": "assets/default_prof.png",
+            "alumno": "assets/default_student.png",
+        }
+    ruta_foto = default_map.get(role, "assets/default_user.png")
+
 
     conn = get_db_connection()
     cursor = conn.cursor()
