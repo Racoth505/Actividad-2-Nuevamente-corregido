@@ -8,6 +8,7 @@ import db_manager
 # --- Importar VISTAS del Admin ---
 # Make sure these files exist in your project directory
 from admin_add_user_view import create_admin_add_user_view
+from admin_users_view import create_admin_users_tab
 from admin_manage_subjects_view import create_manage_subjects_view # Renamed from tab_...
 from admin_edit_subjects_view import create_edit_subjects_view   # New view
 from admin_edit_users_view import create_edit_users_view         # Renamed from tab_...
@@ -62,6 +63,9 @@ def show_admin_view(content_frame, user_data, view_name):
          view = create_edit_users_view(content_frame)
     elif view_name == "assign_subject":
          view = create_assign_subject_view(content_frame)
+    elif view_name == "users":
+         view = create_admin_users_tab(content_frame)
+
 
     # If a view was created, pack it into the content frame
     if view:
@@ -135,6 +139,8 @@ def create_admin_main_view(root, user_data, logout_func):
         ("edit_subjects", " Editar Materias", "edit_subjects"),
         ("edit_users", " Editar Usuarios", "edit_users"),
         ("assign_subject", " Asignar Materia", "assign_subject"),
+        ("users", " Usuarios", "users"),
+
     ]
 
     # Separador inicial (controlará su visibilidad)
