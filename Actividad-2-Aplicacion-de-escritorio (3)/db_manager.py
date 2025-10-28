@@ -2,12 +2,39 @@
 import sqlite3
 import os
 import hashlib
+import sys      # <--- AÑADIDO
+import platform # <--- AÑADIDO
 
-DB_FILE = "calificaciones.db"
+# --- AÑADIDO: Función para obtener la ruta base escribible ---
+def get_app_base_path():
+    """Obtiene la ruta base para archivos escribibles (ej. DB), funciona para script/app congelada."""
+    try:
+        if getattr(sys, 'frozen', False):
+            # Running as a frozen app (pyinstaller)
+            base_path = os.path.dirname(sys.executable)
+            if platform.system() == "Darwin": # macOS
+                # Salir de .../main.app/Contents/MacOS/
+                base_path = os.path.abspath(os.path.join(base_path, "..", "..", ".."))
+            # Para Windows, os.path.dirname(sys.executable) es usualmente correcto
+        else:
+            # Running as a script
+            base_path = os.path.abspath(os.path.dirname(__file__))
+    except Exception:
+        # Fallback por si acaso
+        base_path = os.path.abspath(".")
+
+    return base_path
+# -----------------------------------------------------------
+
+# --- CORREGIDO: DB_FILE ahora usa la ruta base correcta ---
+DB_FILE = os.path.join(get_app_base_path(), "calificaciones.db")
+# -----------------------------------------------------------
 
 # --- Database Connection and Password Hashing ---
 def get_db_connection():
     """Creates and returns a connection to the SQLite database."""
+    # Esta función ahora usa el DB_FILE corregido,
+    # por lo que no necesita más cambios.
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row # Access results by column name
     conn.execute("PRAGMA foreign_keys = ON") # Enable foreign key constraints
@@ -23,6 +50,8 @@ def initialize_database():
     Creates all necessary tables if the database file doesn't exist.
     This function should be called once when the application starts.
     """
+    # Esta función ahora usa el DB_FILE corregido,
+    # por lo que no necesita más cambios.
     if os.path.exists(DB_FILE):
         return # Database already exists
 
@@ -41,7 +70,8 @@ def initialize_database():
         apellidos TEXT,
         telefono TEXT,
         direccion TEXT,
-        ruta_foto TEXT DEFAULT 'assets/default_user.png'
+        -- --- CORREGIDO: El default debe ser NULL, no una ruta rota ---
+        ruta_foto TEXT DEFAULT NULL
     );
     """)
 
@@ -105,6 +135,7 @@ def initialize_database():
     cursor.execute(
         "INSERT INTO Usuarios (username, password, role, nombre_completo) VALUES (?, ?, ?, ?)",
         ('admin', admin_pass_hash, 'admin', 'Administrador')
+        # La ruta_foto será NULL por defecto, lo cual es correcto
     )
 
     conn.commit()
@@ -128,15 +159,17 @@ def validate_login(username, password):
     return None
 
 def create_user(username, password, role, nombre_completo, apellidos, telefono, direccion, ruta_foto=None):
-    """Creates a new user (Professor or Student). Returns the new user's ID or None."""
+    """Creates a new user. Returns the new user's ID or None."""
     pass_hash = hash_password(password)
-    if not ruta_foto:
-        default_map = {
-            "admin": "assets/default_user.png",
-            "profesor": "assets/default_prof.png",
-            "alumno": "assets/default_student.png",
-        }
-    ruta_foto = default_map.get(role, "assets/default_user.png")
+
+    # --- CORREGIDO: Eliminada la lógica de 'default_map' ---
+    # Si 'ruta_foto' es None (porque la vista no envió una),
+    # simplemente se insertará NULL en la base de datos, lo cual es correcto.
+    #
+    # if not ruta_foto:
+    #     default_map = { ... }
+    #     ruta_foto = default_map.get(role, "assets/default_user.png")
+    # --- FIN DE LA CORRECCIÓN ---
 
 
     conn = get_db_connection()
@@ -158,6 +191,12 @@ def create_user(username, password, role, nombre_completo, apellidos, telefono, 
         print(f"Error in create_user: {e}")
         conn.close()
         return None
+
+#
+# ... (EL RESTO DEL ARCHIVO ES IDÉNTICO Y NO NECESITA CAMBIOS)
+# ... (Todas las demás funciones como get_user_by_id, update_user, add_subject, etc.,
+#      usan get_db_connection(), que ya está corregida, por lo que funcionarán)
+#
 
 def get_user_by_id(user_id):
     """Fetches user data by their primary ID."""

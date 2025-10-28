@@ -5,15 +5,34 @@ from PIL import Image, ImageTk
 import os
 import shutil
 import db_manager
+import sys # <--- AÑADIDO
 
-def create_admin_add_user_view(parent_frame, user_data):
+# --- CONSTANTE PARA GUARDAR IMÁGENES ---
+# Las fotos de los usuarios se guardarán aquí, no en 'assets'
+UPLOADS_DIR = "user_images" 
+
+# --- FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        # PyInstaller crea una carpeta temporal y guarda la ruta en _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # Si no está congelado, usa la ruta del script actual
+        base_path = os.path.abspath(os.path.dirname(__file__))
+
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
+
+
+# 'user_data' fue eliminado, no se usaba
+def create_admin_add_user_view(parent_frame):
     """Vista para agregar nuevos usuarios, con tamaño similar a manage_subjects."""
 
     view_frame = ttk.Frame(parent_frame, style="Main.TFrame")
     view_frame.columnconfigure(0, weight=1)  # Columna única se expande
     view_frame.rowconfigure(1, weight=1)     # Form se expande verticalmente
 
-    # --- Título ---
     # --- Título ---
     title_frame = ttk.Frame(view_frame, style="Main.TFrame")
     title_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(0,20))
@@ -37,28 +56,27 @@ def create_admin_add_user_view(parent_frame, user_data):
     direccion_var = tk.StringVar()
     foto_path = tk.StringVar(value="")
 
-    # Helper
-    def create_labeled_entry(parent, label_text, row, show=None, placeholder=None):
+    # Helper (CORREGIDO)
+    def create_labeled_entry(parent, label_text, row, textvariable, show=None):
         ttk.Label(parent, text=label_text, style="TLabel").grid(row=row, column=0, sticky="w", pady=5, padx=5)
-        entry = ttk.Entry(parent, textvariable=placeholder, show=show, font=("Helvetica", 10))
+        # El parámetro 'placeholder' fue renombrado a 'textvariable' para claridad
+        entry = ttk.Entry(parent, textvariable=textvariable, show=show, font=("Helvetica", 10))
         entry.grid(row=row, column=1, columnspan=2, sticky="ew", pady=5, padx=5, ipady=4)
-        if placeholder: entry.insert(0, placeholder.get())
+        # La línea 'entry.insert' fue eliminada por ser redundante
         return entry
 
     # Rol
     ttk.Label(form_area, text="Rol del Usuario", style="TLabel").grid(row=0, column=0, sticky="w", padx=5, pady=5)
     combo_rol = ttk.Combobox(
-    form_area,
-    textvariable=rol_var,
-    values=["admin", "profesor", "alumno"],  # incluir admin
-    state="readonly",
-    width=37
-)
-
-
+        form_area,
+        textvariable=rol_var,
+        values=["admin", "profesor", "alumno"],  # incluir admin
+        state="readonly",
+        width=37
+    )
     combo_rol.grid(row=0, column=1, sticky="ew", pady=5, padx=5, columnspan=2)
 
-    # Campos
+    # Campos (CORREGIDO)
     row_idx = 1
     campos = [
         ("Matrícula", matricula_var, None),
@@ -69,7 +87,8 @@ def create_admin_add_user_view(parent_frame, user_data):
         ("Dirección", direccion_var, None)
     ]
     for label_text, var, show_char in campos:
-        create_labeled_entry(form_area, label_text, row_idx, show=show_char, placeholder=var)
+        # Ahora pasamos 'var' como el argumento 'textvariable'
+        create_labeled_entry(form_area, label_text, row_idx, show=show_char, textvariable=var)
         row_idx += 1
 
     # Foto
@@ -78,9 +97,11 @@ def create_admin_add_user_view(parent_frame, user_data):
     ttk.Label(foto_frame, text="Foto del Usuario:", style="TLabel").pack(side="left", padx=5)
 
     try:
-        default_img = Image.open("assets/default_user.png")
+        # --- CORREGIDO: Usando resource_path para cargar la imagen ---
+        default_img = Image.open(resource_path("assets/default_user.png"))
     except FileNotFoundError:
         default_img = Image.new('RGB', (100,100), color='grey')
+        
     default_img = default_img.resize((100,100))
     preview_img = ImageTk.PhotoImage(default_img)
 
@@ -100,7 +121,7 @@ def create_admin_add_user_view(parent_frame, user_data):
 
     ttk.Button(foto_frame, text="Seleccionar Foto", command=seleccionar_foto, style="Accent.TButton").pack(side="left", padx=5)
 
-    # Guardar
+    # Guardar (CORREGIDO)
     def guardar_usuario():
         rol = rol_var.get().strip()
         matricula = matricula_var.get().strip()
@@ -110,31 +131,49 @@ def create_admin_add_user_view(parent_frame, user_data):
         telefono = telefono_var.get().strip() or None
         direccion = direccion_var.get().strip() or None
         ruta_foto_original = foto_path.get()
-        ruta_final = None
+        ruta_final = None # Ruta que se guardará en la BD
 
         if not matricula or not password or not nombres:
             messagebox.showwarning("Campos Requeridos","Matrícula, Contraseña y Nombre(s) son obligatorios.")
             return
 
+        # --- LÓGICA DE GUARDADO DE FOTO CORREGIDA ---
         if ruta_foto_original:
+            # 1. Asegurarse que la carpeta 'user_images' exista
+            if not os.path.exists(UPLOADS_DIR):
+                try:
+                    os.makedirs(UPLOADS_DIR)
+                except OSError as e:
+                    messagebox.showerror("Error de Directorio", f"No se pudo crear la carpeta '{UPLOADS_DIR}': {e}")
+                    return
+
+            # 2. Definir el destino dentro de 'user_images'
             ext = os.path.splitext(ruta_foto_original)[1]
-            destino = f"assets/{matricula}{ext}"
-            try: shutil.copy(ruta_foto_original, destino); ruta_final = destino
+            # Usamos os.path.join para compatibilidad de SO
+            destino = os.path.join(UPLOADS_DIR, f"{matricula}{ext}") 
+            
+            try: 
+                shutil.copy(ruta_foto_original, destino)
+                ruta_final = destino # Guardamos la ruta relativa (ej: "user_images/123.png")
             except Exception as e:
-                messagebox.showerror("Error al copiar foto", f"No se pudo guardar la foto: {e}"); ruta_final=None
+                messagebox.showerror("Error al copiar foto", f"No se pudo guardar la foto: {e}")
+                ruta_final = None # No se pudo guardar, se queda sin foto
+        # -----------------------------------------------
 
         new_user_id = db_manager.create_user(username=matricula, password=password, role=rol,
                                              nombre_completo=nombres, apellidos=apellidos,
                                              telefono=telefono, direccion=direccion, ruta_foto=ruta_final)
         if new_user_id:
             messagebox.showinfo("Éxito", f"Usuario '{matricula}' agregado correctamente con ID: {new_user_id}.")
+            # Limpiar formulario
             for var in [matricula_var, password_var, nombres_var, apellidos_var, telefono_var, direccion_var]:
                 var.set("")
             foto_path.set("")
+            # Resetear imagen al default
             img_label.config(image=preview_img)
             img_label.image = preview_img
         else:
-            messagebox.showerror("Error", f"La matrícula '{matricula}' ya existe o hubo un error.")
+            messagebox.showerror("Error", f"La matrícula '{matricula}' ya existe o hubo un error al crear.")
 
     ttk.Button(form_area, text="Guardar Usuario", command=guardar_usuario, style="Green.TButton").grid(
         row=row_idx+1, column=0, columnspan=3, pady=30, ipady=5, sticky="ew"

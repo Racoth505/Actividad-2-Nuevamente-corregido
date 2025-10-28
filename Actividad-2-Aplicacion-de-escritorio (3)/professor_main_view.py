@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 import os
 import platform
 import db_manager
+import sys # <--- AÑADIDO
 
 # Importar VISTAS del Profesor
 from professor_subjects_view import create_professor_subjects_view
@@ -14,6 +15,16 @@ from professor_edit_activity_view import create_professor_edit_activity_view
 from professor_delete_activity_view import create_professor_delete_activity_view
 from tab_profile import create_profile_tab
 
+# --- AÑADIDO: FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
+
 # Placeholders globales
 _logout_func = None
 _update_header_func = None
@@ -22,8 +33,16 @@ _icon_images = {}
 _nav_buttons = {}
 
 def load_icon(filename, size=(20, 20)):
+    """Carga, redimensiona y guarda una imagen de ícono, usando resource_path."""
     try:
-        path = os.path.join("assets", filename)
+        # --- CORREGIDO: Usando resource_path para la ruta del ícono ---
+        path = resource_path(os.path.join("assets", filename))
+        
+        # --- AÑADIDO: Comprobación de existencia ---
+        if not os.path.exists(path):
+            print(f"Advertencia: Archivo de icono no encontrado en {path}")
+            return None
+            
         img = Image.open(path).resize(size, Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(img)
         _icon_images[filename] = photo
@@ -97,6 +116,14 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
 
     # Configurar estilo para botones
     style.configure("Sidebar.TButton", font=("Helvetica", 11), anchor="w", padding=(15, 10))
+    
+    # --- AÑADIDO: Estilos de sidebar de admin que faltaban ---
+    # (Esto asegura que los estilos 'Sidebar.TButton' se vean como en admin_main_view)
+    style.configure("Sidebar.TButton", font=("Helvetica", 11), foreground="white", background="#28a745", anchor="w", padding=(10, 8))
+    style.map("Sidebar.TButton", 
+              background=[("active", "#218838"), ("selected", "#218838")],
+              foreground=[("active", "white"), ("selected", "white")])
+    # -----------------------------------------------------
 
     # Configuración Root
     sidebar_width = 230
@@ -105,7 +132,7 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
     root.rowconfigure(0, weight=1)
 
     # --- Sidebar ---
-    sidebar_frame = tk.Frame(root, bg="#28a745")
+    sidebar_frame = tk.Frame(root, bg="#28a745") # Usar el color verde
     sidebar_frame.grid(row=0, column=0, sticky="nsew")
     sidebar_frame.rowconfigure(1, weight=1)
     sidebar_frame.pack_propagate(False)
@@ -113,7 +140,8 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
     # Banner
     try:
         banner_width = sidebar_width - 20
-        banner_img_path = "assets/banner.png"
+        # --- CORREGIDO: Usando resource_path para el banner ---
+        banner_img_path = resource_path("assets/banner.png")
         original_img = Image.open(banner_img_path)
         img_w, img_h = original_img.size
         ratio = banner_width / img_w
@@ -128,12 +156,11 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
         tk.Label(sidebar_frame, text="[BANNER]", bg="#28a745", fg="white", font=("Helvetica", 16, "bold")).grid(row=0, column=0, pady=20, padx=10)
 
     # --- Nav Frame ---
-    nav_frame = tk.Frame(sidebar_frame, bg="#28a745")
+    nav_frame = tk.Frame(sidebar_frame, bg="#28a745") # Usar el color verde
     nav_frame.grid(row=1, column=0, sticky="new", pady=10, padx=10)
     nav_frame.columnconfigure(1, weight=1)
 
-    # --- Cargar Íconos (INICIO DE CAMBIO) ---
-    # Usando los nombres de íconos de la vista de admin
+    # --- Cargar Íconos ---
     icons = {
         "subjects": load_icon("icon_subjects.png"),
         "add_activity": load_icon("icon_add_subject.png"),
@@ -142,8 +169,6 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
         "profile": load_icon("icon_profile.png"),
         "salir": load_icon("icon_salir.png")
     }
-    # --- FIN DE CAMBIO ---
-
 
     # Crear Botones
     buttons_info = [
@@ -160,50 +185,51 @@ def create_professor_main_view(root, user_data, logout_func, update_header_func)
             style="Sidebar.TButton",
             image=icon,
             compound=tk.LEFT,
-            command=lambda v=view_name: show_professor_view(content_frame, user_data, v)  # Corregido
+            command=lambda v=view_name: show_professor_view(content_frame, user_data, v)
         )
         btn.grid(row=i, column=0, columnspan=2, sticky="ew", pady=5)
         
-        btn.image = icon # <--- CORRECCIÓN 1: Anclaje de imagen
+        btn.image = icon # Anclaje de imagen
         
         if i == 0:
             btn.state(['selected'])  # Marcar como seleccionado al inicio
         _nav_buttons[view_name] = btn
 
     # --- Botones Inferiores ---
-    bottom_frame = tk.Frame(sidebar_frame, bg="#28a745")
+    bottom_frame = tk.Frame(sidebar_frame, bg="#28a745") # Usar el color verde
     bottom_frame.grid(row=2, column=0, sticky="sew", pady=20, padx=10)
     bottom_frame.columnconfigure(0, weight=1)
 
     btn_perfil = ttk.Button(bottom_frame, text=" Perfil", style="Sidebar.TButton", image=icons.get("profile"), compound=tk.LEFT, command=lambda: show_professor_view(content_frame, user_data, "profile"))
     btn_perfil.grid(row=0, column=0, sticky="ew", pady=(0, 5))
     
-    btn_perfil.image = icons.get("profile") # <--- CORRECCIÓN 2: Anclaje de imagen
+    btn_perfil.image = icons.get("profile") # Anclaje de imagen
     
     _nav_buttons["profile"] = btn_perfil
 
     btn_salir = ttk.Button(bottom_frame, text=" Salir", style="Sidebar.TButton", image=icons.get("salir"), compound=tk.LEFT, command=_logout_func)
     btn_salir.grid(row=1, column=0, sticky="ew", pady=(5, 0))
     
-    btn_salir.image = icons.get("salir") # <--- CORRECCIÓN 3: Anclaje de imagen
+    btn_salir.image = icons.get("salir") # Anclaje de imagen
 
     # --- Área de Contenido ---
-    content_area = ttk.Frame(root, padding=(20, 10))
+    # --- AÑADIDO: Aplicar estilo "Main.TFrame" ---
+    content_area = ttk.Frame(root, padding=(20, 10), style="Main.TFrame") 
     content_area.grid(row=0, column=1, sticky="nsew")
     content_area.rowconfigure(1, weight=1)
     content_area.columnconfigure(0, weight=1)
 
-    header_frame = ttk.Frame(content_area)
+    header_frame = ttk.Frame(content_area, style="Main.TFrame")
     header_frame.grid(row=0, column=0, sticky="ew", pady=(10, 20))
 
-    professor_lbl_photo_header = ttk.Label(header_frame)
+    professor_lbl_photo_header = ttk.Label(header_frame, style="TLabel") # Aplicar estilo
     professor_lbl_photo_header.pack(side=tk.RIGHT, padx=(0, 10))
 
     _update_header_func()  # Carga inicial
     header_text = f"{user_data.get('nombre_completo', 'Profesor')} ({user_data['role'].capitalize()})"
-    ttk.Label(header_frame, text=header_text, font=("Helvetica", 14)).pack(side=tk.RIGHT, padx=(0, 10))
+    ttk.Label(header_frame, text=header_text, font=("Helvetica", 14), style="TLabel").pack(side=tk.RIGHT, padx=(0, 10)) # Aplicar estilo
 
-    content_frame = ttk.Frame(content_area)
+    content_frame = ttk.Frame(content_area, style="Main.TFrame")
     content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
     # Vista inicial: Materias

@@ -5,16 +5,25 @@ from PIL import Image, ImageTk
 import os
 import platform
 import db_manager
+import sys # <--- AÑADIDO: Importar sys para resource_path
 
 # --- Importar VISTAS del Admin ---
-# Make sure these files exist in your project directory
 from admin_add_user_view import create_admin_add_user_view
 from admin_users_view import create_admin_users_tab
-from admin_manage_subjects_view import create_manage_subjects_view # Renamed from tab_...
-from admin_edit_subjects_view import create_edit_subjects_view   # New view
-from admin_edit_users_view import create_edit_users_view         # Renamed from tab_...
-from admin_assign_subject_view import create_assign_subject_view   # New view
+from admin_manage_subjects_view import create_manage_subjects_view
+from admin_edit_subjects_view import create_edit_subjects_view
+from admin_edit_users_view import create_edit_users_view
+from admin_assign_subject_view import create_assign_subject_view
 
+# --- FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
 
 # Placeholders globales
 _logout_func = None
@@ -23,19 +32,23 @@ _icon_images = {} # Guardar referencias a las imágenes de íconos
 _nav_buttons = {} # Guardar referencias a los botones de navegación
 
 def load_icon(filename, size=(20, 20)):
-    """Carga, redimensiona y guarda una imagen de ícono."""
+    """Carga, redimensiona y guarda una imagen de ícono, usando resource_path."""
     try:
-        path = os.path.join("assets", filename)
-        # Check if file exists before trying to open
+        # --- CORREGIDO: Usando resource_path para la ruta del ícono ---
+        path = resource_path(os.path.join("assets", filename))
+        
         if not os.path.exists(path):
-            print(f"Warning: Icon file not found at {path}")
+            print(f"Advertencia: Archivo de icono no encontrado en {path}")
+            # Puedes usar una imagen de placeholder aquí si lo deseas
+            # return ImageTk.PhotoImage(Image.new('RGB', size, color='grey'))
             return None
+            
         img = Image.open(path).resize(size, Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(img)
         _icon_images[filename] = photo # Guardar referencia
         return photo
     except Exception as e:
-        print(f"Error loading icon {filename}: {e}")
+        print(f"Error cargando icono {filename}: {e}")
         return None
 
 def show_admin_view(content_frame, user_data, view_name):
@@ -55,8 +68,9 @@ def show_admin_view(content_frame, user_data, view_name):
     # Cargar la vista correspondiente
     view = None # Initialize view variable
     if view_name == "add_user":
-        view = create_admin_add_user_view(content_frame, user_data)
-    elif view_name == "manage_subjects": # Renamed from "Agregar Materias" button text
+        # --- CORREGIDO: create_admin_add_user_view ya no usa user_data ---
+        view = create_admin_add_user_view(content_frame)
+    elif view_name == "manage_subjects":
          view = create_manage_subjects_view(content_frame)
     elif view_name == "edit_subjects":
          view = create_edit_subjects_view(content_frame)
@@ -103,10 +117,11 @@ def create_admin_main_view(root, user_data, logout_func):
 
     # Banner
     try:
-        # Adjust banner resize calculation if needed
-        banner_width = sidebar_width - 20
-        banner_img_path = "assets/banner.png"
+        # --- CORREGIDO: Usando resource_path para la ruta del banner ---
+        banner_img_path = resource_path("assets/banner.png")
         original_img = Image.open(banner_img_path)
+        
+        banner_width = sidebar_width - 20
         img_w, img_h = original_img.size
         ratio = banner_width / img_w
         banner_height = int(img_h * ratio)
@@ -128,7 +143,6 @@ def create_admin_main_view(root, user_data, logout_func):
     nav_frame.columnconfigure(1, weight=1) # Columna del texto expande
 
     # --- Cargar Íconos ---
-    # Ensure these filenames match the files in your assets folder
     icons = {
         "add_user": load_icon("icon_add_user.png"),
         "manage_subjects": load_icon("icon_add_subject.png"),
@@ -141,17 +155,14 @@ def create_admin_main_view(root, user_data, logout_func):
 
     # --- Crear Botones ---
     buttons_info = [
-        # (view_name, Button Text, icon_key)
-        ("add_user", " Agregar Usuarios", "add_user"), # Note leading space for padding
+        ("add_user", " Agregar Usuarios", "add_user"),
         ("manage_subjects", " Agregar Materias", "manage_subjects"),
         ("edit_subjects", " Editar Materias", "edit_subjects"),
         ("edit_users", " Editar Usuarios", "edit_users"),
         ("assign_subject", " Asignar Materia", "assign_subject"),
         ("users", " Usuarios", "users"),
-
     ]
 
-    # Separador inicial (controlará su visibilidad)
     for i, (view_name, text, icon_key) in enumerate(buttons_info):
         icon = icons.get(icon_key)
         btn = ttk.Button(
@@ -163,7 +174,6 @@ def create_admin_main_view(root, user_data, logout_func):
             command=lambda v=view_name: show_admin_view(content_frame, user_data, v)
         )
 
-        # Sin el separador blanco
         btn.grid(row=i, column=0, columnspan=2, sticky="ew", pady=5)
         if i == 0:
             btn.state(['selected'])  # Marcar como seleccionado al inicio
@@ -172,11 +182,10 @@ def create_admin_main_view(root, user_data, logout_func):
 
     # --- Botón Salir (Abajo) ---
     bottom_frame = tk.Frame(sidebar_frame, bg="#28a745")
-    # Use grid row=2 to place it below the expanding nav_frame (row=1)
     bottom_frame.grid(row=2, column=0, sticky="sew", pady=20, padx=10)
     bottom_frame.columnconfigure(0, weight=1)
 
-    btn_salir = ttk.Button(bottom_frame, text=" Salir", style="Sidebar.TButton", # Added space
+    btn_salir = ttk.Button(bottom_frame, text=" Salir", style="Sidebar.TButton",
                            image=icons.get("salir"), compound=tk.LEFT,
                            command=_logout_func)
     btn_salir.grid(row=0, column=0, sticky="ew")

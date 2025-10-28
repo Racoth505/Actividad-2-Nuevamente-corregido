@@ -5,10 +5,21 @@ from PIL import Image, ImageTk
 import os
 import platform
 import db_manager  # Import DB manager
+import sys # <--- AÑADIDO
 
 # Importar las vistas
 from student_subjects_view import create_student_subjects_view
 from tab_profile import create_profile_tab  # Reutilizar lógica de perfil
+
+# --- AÑADIDO: FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
 
 # Placeholders globales
 _logout_func = None
@@ -16,11 +27,12 @@ _update_header_func = None
 student_lbl_photo_header = None
 _icon_images = {} # <--- AÑADIDO
 
-# --- AÑADIDO: Función para cargar íconos ---
+# --- CORREGIDO: Función para cargar íconos ---
 def load_icon(filename, size=(20, 20)):
     """Carga, redimensiona y guarda una imagen de ícono."""
     try:
-        path = os.path.join("assets", filename)
+        # --- CORREGIDO: Usando resource_path ---
+        path = resource_path(os.path.join("assets", filename))
         if not os.path.exists(path):
             print(f"Warning: Icon file not found at {path}")
             return None
@@ -59,6 +71,13 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
 
     # Configurar estilo para botones de la sidebar
     style.configure("Sidebar.TButton", font=("Helvetica", 11), anchor="w", padding=(15, 10))
+    
+    # --- AÑADIDO: Estilos de sidebar de admin/profesor que faltaban ---
+    style.configure("Sidebar.TButton", font=("Helvetica", 11), foreground="white", background="#28a745", anchor="w", padding=(10, 8))
+    style.map("Sidebar.TButton", 
+              background=[("active", "#218838"), ("selected", "#218838")],
+              foreground=[("active", "white"), ("selected", "white")])
+    # -----------------------------------------------------
 
     # Configurar grid de la ventana raíz
     sidebar_width = 220  # Ancho ajustado para el banner
@@ -74,7 +93,8 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
 
     # Banner (Arriba)
     try:
-        banner_img_path = "assets/banner.png"
+        # --- CORREGIDO: Usando resource_path ---
+        banner_img_path = resource_path("assets/banner.png")
         original_img = Image.open(banner_img_path)
         img_w, img_h = original_img.size
         target_w = sidebar_width - 20
@@ -89,7 +109,7 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
         print(f"Error cargando banner.png: {e}")
         tk.Label(sidebar_frame, text="[BANNER]", bg="#28a745", fg="white", font=("Helvetica", 16, "bold")).grid(row=0, column=0, pady=20, padx=10)
 
-    # --- AÑADIDO: Cargar iconos ---
+    # --- Cargar iconos ---
     icons = {
         "subjects": load_icon("icon_subjects.png"),
         "profile": load_icon("icon_profile.png"),
@@ -101,7 +121,7 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
     nav_frame.grid(row=1, column=0, sticky="new", pady=10, padx=10)
     nav_frame.columnconfigure(0, weight=1) # <--- MODIFICADO (Cambiado a col 0)
 
-    # --- MODIFICADO: Botón Materias ---
+    # --- Botón Materias ---
     btn_materias = ttk.Button(nav_frame, text=" Materias", style="Sidebar.TButton",
                               image=icons.get("subjects"), compound=tk.LEFT,
                               command=lambda: show_view(content_frame, user_data, "subjects"))
@@ -113,14 +133,14 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
     bottom_frame.grid(row=2, column=0, sticky="sew", pady=20, padx=10)
     bottom_frame.columnconfigure(0, weight=1)  # La columna se expande
 
-    # --- MODIFICADO: Botón Perfil ---
+    # --- Botón Perfil ---
     btn_perfil = ttk.Button(bottom_frame, text=" Perfil", style="Sidebar.TButton",
                             image=icons.get("profile"), compound=tk.LEFT,
                             command=lambda: show_view(content_frame, user_data, "profile"))
     btn_perfil.grid(row=0, column=0, sticky="ew", pady=(0, 5))  # Fila 0 de bottom_frame
     btn_perfil.image = icons.get("profile") # Anclaje
 
-    # --- MODIFICADO: Botón Salir ---
+    # --- Botón Salir ---
     btn_salir = ttk.Button(bottom_frame, text=" Salir", style="Sidebar.TButton",
                            image=icons.get("logout"), compound=tk.LEFT,
                            command=_logout_func)
@@ -128,28 +148,29 @@ def create_student_main_view(root, user_data, logout_func, update_header_func):
     btn_salir.image = icons.get("logout") # Anclaje
 
     # --- Área de Contenido (Derecha) ---
-    content_area = ttk.Frame(root, padding=(20, 10))  # Sin estilo personalizado
+    # --- AÑADIDO: Estilo Main.TFrame ---
+    content_area = ttk.Frame(root, padding=(20, 10), style="Main.TFrame")
     content_area.grid(row=0, column=1, sticky="nsew")
     content_area.rowconfigure(1, weight=1)
     content_area.columnconfigure(0, weight=1)
 
     # Header en Área de Contenido
-    header_frame = ttk.Frame(content_area)  # Sin estilo personalizado
+    header_frame = ttk.Frame(content_area, style="Main.TFrame")
     header_frame.grid(row=0, column=0, sticky="ew", pady=(10, 20))
 
-    student_lbl_photo_header = ttk.Label(header_frame)
+    student_lbl_photo_header = ttk.Label(header_frame, style="TLabel") # Aplicar estilo
     student_lbl_photo_header.pack(side=tk.RIGHT, padx=(0, 10))
 
     _update_header_func()  # Carga inicial
 
     header_text = f"{user_data['nombre_completo']} ({user_data['role'].capitalize()})"
-    ttk.Label(header_frame, text=header_text, font=("Helvetica", 14)).pack(side=tk.RIGHT, padx=(0, 10))
+    ttk.Label(header_frame, text=header_text, font=("Helvetica", 14), style="TLabel").pack(side=tk.RIGHT, padx=(0, 10)) # Aplicar estilo
 
     # Frame para vistas
-    content_frame = ttk.Frame(content_area)
+    content_frame = ttk.Frame(content_area, style="Main.TFrame")
     content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
     # Vista inicial
     show_view(content_frame, user_data, "subjects")
 
-    return content_frame,
+    return content_frame

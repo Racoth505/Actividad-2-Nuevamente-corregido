@@ -5,6 +5,20 @@ from PIL import Image, ImageTk
 import os
 import shutil
 import db_manager # Importa la lógica de la BBDD
+import sys # <--- AÑADIDO
+
+# --- AÑADIDO: Directorio para guardar fotos subidas ---
+UPLOADS_DIR = "user_images"
+
+# --- AÑADIDO: FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
 
 def create_profile_tab(parent_frame, user_data, update_header_callback):
     """Crea la pestaña/vista de perfil del usuario."""
@@ -23,25 +37,52 @@ def create_profile_tab(parent_frame, user_data, update_header_callback):
     profile_photo_img = None
     img_label = tk.Label(center_frame, width=120, height=120, bg="lightgrey", relief="solid", bd=1) # Placeholder
 
+    # --- FUNCIÓN CORREGIDA ---
     def load_profile_image():
         nonlocal profile_photo_img # Para actualizar la referencia global
         # Recargar datos del usuario por si la ruta cambió
         current_user_data = db_manager.get_user_by_id(student_id)
-        img_path = current_user_data.get('ruta_foto', 'assets/default_user.png')
-        if not os.path.exists(img_path):
-             img_path = 'assets/default_user.png'
+        
+        # 1. Determinar la imagen por defecto correcta
+        role = current_user_data.get('role', 'alumno')
+        default_filename = "assets/default_user.png" # Fallback
+        if role == 'profesor':
+            default_filename = "assets/default_prof.png"
+        elif role == 'alumno':
+            default_filename = "assets/default_student.png"
+        
+        default_img_path = resource_path(default_filename)
+
+        # 2. Obtener la ruta de la foto del usuario (puede ser None)
+        user_img_path = current_user_data.get('ruta_foto')
+
+        # 3. Decidir qué ruta cargar
+        path_to_load = default_img_path # Empezar con la default
+        if user_img_path and os.path.exists(user_img_path):
+            path_to_load = user_img_path # Si existe, usar la del usuario
+        
+        # 4. Cargar la imagen
         try:
-            img = Image.open(img_path).resize((120, 120), Image.Resampling.LANCZOS)
-            profile_photo_img = ImageTk.PhotoImage(img)
-            img_label.config(image=profile_photo_img, width=120, height=120, bg='white')
-            img_label.image = profile_photo_img # Guardar referencia
+            img = Image.open(path_to_load).resize((120, 120), Image.Resampling.LANCZOS)
         except Exception as e:
-            print(f"Error cargando imagen de perfil: {e}")
-            img_label.config(image='', text="Error", width=15, height=7) # Resetear si falla
+            print(f"Error cargando imagen {path_to_load}: {e}. Intentando default.")
+            try:
+                # Si la foto del usuario estaba corrupta, cargar la default
+                img = Image.open(default_img_path).resize((120, 120), Image.Resampling.LANCZOS)
+            except Exception as e_default:
+                print(f"Error fatal cargando imagen default: {e_default}")
+                img_label.config(image='', text="Error", width=15, height=7) # Resetear si falla
+                return
+
+        profile_photo_img = ImageTk.PhotoImage(img)
+        img_label.config(image=profile_photo_img, width=120, height=120, bg='white')
+        img_label.image = profile_photo_img # Guardar referencia
+    # --- FIN DE LA CORRECCIÓN ---
 
     load_profile_image() # Carga inicial
     img_label.pack(pady=10)
 
+    # --- FUNCIÓN CORREGIDA ---
     def cambiar_foto_perfil():
         filepath = filedialog.askopenfilename(
             title="Selecciona tu foto de perfil",
@@ -49,18 +90,27 @@ def create_profile_tab(parent_frame, user_data, update_header_callback):
         )
         if not filepath: return
 
-        # Usar ID numérico para el nombre de archivo es más robusto que username
+        # 1. Asegurarse que la carpeta 'user_images' exista
+        if not os.path.exists(UPLOADS_DIR):
+            try:
+                os.makedirs(UPLOADS_DIR)
+            except OSError as e:
+                messagebox.showerror("Error de Directorio", f"No se pudo crear la carpeta '{UPLOADS_DIR}': {e}")
+                return
+
+        # 2. Definir el destino DENTRO de 'user_images'
         ext = os.path.splitext(filepath)[1]
-        destino = f"assets/{student_id}{ext}" # Ej: assets/1.png
+        # Usar os.path.join para compatibilidad
+        destino = os.path.join(UPLOADS_DIR, f"{student_id}{ext}") 
 
         try:
             shutil.copy(filepath, destino)
-            ruta_final_relativa = destino # Guardar ruta relativa
+            ruta_final_relativa = destino # Guardar ruta (ej: "user_images/1.png")
 
-            # Actualizar en BBDD
+            # 3. Actualizar en BBDD
             db_manager.update_user_photo(student_id, ruta_final_relativa)
 
-            # Recargar UI
+            # 4. Recargar UI
             load_profile_image() # Actualizar imagen en esta vista
             if update_header_callback:
                  update_header_callback() # Llamar al callback para actualizar header
@@ -68,6 +118,7 @@ def create_profile_tab(parent_frame, user_data, update_header_callback):
             messagebox.showinfo("Éxito", "Foto de perfil actualizada.")
         except Exception as e:
             messagebox.showerror("Error al Copiar", f"No se pudo guardar la foto: {e}")
+    # --- FIN DE LA CORRECCIÓN ---
 
     # Botón para cambiar foto (usando ttk)
     ttk.Button(center_frame, text="Cambiar Foto", command=cambiar_foto_perfil, style="Accent.TButton").pack(pady=(0, 15))

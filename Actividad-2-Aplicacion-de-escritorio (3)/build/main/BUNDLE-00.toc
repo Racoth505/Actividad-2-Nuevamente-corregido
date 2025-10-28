@@ -1,0 +1,4 @@
+([('main',
+   '/Users/royismaelsanchez/Actividad-2-Nuevamente-corregido-1/Actividad-2-Aplicacion-de-escritorio '
+   '(3)/dist/main',
+   'EXECUTABLE')],)

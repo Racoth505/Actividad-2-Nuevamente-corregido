@@ -5,6 +5,7 @@ import os
 import shutil
 from PIL import Image, ImageTk
 import platform
+import sys # <--- AÑADIDO
 
 # --- Managers and Styles ---
 import db_manager
@@ -15,7 +16,18 @@ from admin_main_view import create_admin_main_view  # Vista Admin con Sidebar
 from professor_main_view import create_professor_main_view  # Vista Profesor con Sidebar
 from student_main_view import create_student_main_view  # Vista Alumno con Sidebar
 
+# --- AÑADIDO: FUNCIÓN DE RUTA DE RECURSOS ---
+def resource_path(relative_path):
+    """ Obtiene la ruta absoluta al recurso, funciona para script y para app congelada. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
+# ------------------------------------
+
 # --- Initialize DB ---
+# Esto ahora usa la ruta corregida de db_manager.py
 db_manager.initialize_database()
 
 # --- Global root window ---
@@ -75,7 +87,8 @@ def show_login_page():
     left_content.pack(expand=True)
 
     try:
-        logo_img = Image.open("assets/logo.png").resize((120, 100), Image.Resampling.LANCZOS)
+        # --- CORREGIDO: Usando resource_path para el logo ---
+        logo_img = Image.open(resource_path("assets/logo.png")).resize((120, 100), Image.Resampling.LANCZOS)
         logo_photo = ImageTk.PhotoImage(logo_img)
         lbl_logo = tk.Label(left_content, image=logo_photo, bg="#28a745")
         lbl_logo.image = logo_photo
@@ -148,7 +161,7 @@ def show_main_app(user_data):
     else:
         root.geometry("950x700")
 
-    # Función para actualizar foto de header
+    # --- CORREGIDO: Lógica de actualización de foto robusta ---
     def update_header_photo():
         target_label = None
         current_user_data = db_manager.get_user_by_id(user_data["id"])
@@ -171,16 +184,54 @@ def show_main_app(user_data):
         if target_label is None: return
 
         try:
-            image_path = current_user_data["ruta_foto"]
-            if not os.path.exists(image_path): image_path = "assets/default_user.png"
-            size = (40, 40) if role == 'admin' else (50, 50)
-            img = Image.open(image_path).resize(size, Image.Resampling.LANCZOS)
-            photo_tk = ImageTk.PhotoImage(img)
+            # 1. Obtener la ruta de la foto de forma segura (puede ser None)
+            image_path = current_user_data.get("ruta_foto")
 
-            target_label.config(image=photo_tk)
-            target_label.image = photo_tk
+            # 2. Determinar la imagen por defecto correcta según el rol
+            default_filename = "assets/default_user.png" # Para admin
+            if role == 'profesor':
+                default_filename = "assets/default_prof.png"
+            elif role == 'alumno':
+                default_filename = "assets/default_student.png"
+            
+            # 3. Obtener la ruta completa y correcta de la imagen por defecto
+            default_image_path = resource_path(default_filename)
+
+            # 4. Decidir qué ruta cargar
+            final_path_to_load = None
+            if not image_path or not os.path.exists(image_path):
+                # Si la ruta es None (NULL) o el archivo no existe, usar el default
+                final_path_to_load = default_image_path
+            else:
+                # La ruta existe, usarla
+                final_path_to_load = image_path
+            
+            size = (40, 40) if role == 'admin' else (50, 50)
+            img = None
+
+            # 5. Intentar cargar la imagen final
+            try:
+                img = Image.open(final_path_to_load).resize(size, Image.Resampling.LANCZOS)
+            except Exception as e_load:
+                # Si falla (ej. foto corrupta), intentar cargar la default como último recurso
+                print(f"Error al cargar '{final_path_to_load}': {e_load}. Usando default.")
+                try:
+                    img = Image.open(default_image_path).resize(size, Image.Resampling.LANCZOS)
+                except Exception as e_default:
+                    # Si incluso la default falla, no podemos hacer nada
+                    print(f"ERROR FATAL: No se pudo cargar la imagen default '{default_image_path}': {e_default}")
+                    return # Salir de la función
+
+            # 6. Asignar la imagen si se cargó exitosamente
+            if img:
+                photo_tk = ImageTk.PhotoImage(img)
+                target_label.config(image=photo_tk)
+                target_label.image = photo_tk
+
         except Exception as e:
-            print(f"No se pudo recargar la imagen del header: {e}")
+            print(f"Error general al recargar la imagen del header: {e}")
+    # --- FIN DE LA CORRECCIÓN ---
+
 
     # Renderizar UI según rol
     if role == 'admin':
