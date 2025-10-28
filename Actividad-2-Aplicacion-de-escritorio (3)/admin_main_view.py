@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import os
+import platform
 import db_manager
 
 # --- Importar VISTAS del Admin ---
@@ -81,6 +82,12 @@ def create_admin_main_view(root, user_data, logout_func):
     _logout_func = logout_func
     _icon_images = {} # Limpiar íconos previos
     _nav_buttons = {} # Limpiar referencias a botones
+
+    style = ttk.Style()
+    if platform.system() == "Darwin":  # macOS
+        style.theme_use("aqua")
+    else:  # Windows u otros
+        style.theme_use("clam")  # Tema compatible con personalización de colores
 
     # Configurar grid de la ventana raíz
     sidebar_width = 230 # Ancho ajustado
