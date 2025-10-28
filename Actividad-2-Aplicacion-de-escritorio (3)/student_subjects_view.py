@@ -133,6 +133,7 @@ def create_student_subjects_view(parent_frame, user_data):
     ).grid(row=0, column=0, pady=10, sticky='nw', padx=10)
 
     # --- Canvas y Scrollbar ---
+    # Asegúrate de ajustar este color si usas otro fondo en tu app
     canvas = tk.Canvas(container, bg='#dcd9d3', highlightthickness=0)
     scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
     canvas.configure(yscrollcommand=scrollbar.set)
@@ -144,12 +145,37 @@ def create_student_subjects_view(parent_frame, user_data):
     materias_frame = ttk.Frame(canvas, style="Main.TFrame", padding=(10, 0))
     canvas_window = canvas.create_window((0, 0), window=materias_frame, anchor='nw')
 
+    # --- Guardar referencias originales del canvas (para restaurar) ---
+    original_methods = {
+        'yview_scroll': canvas.yview_scroll,
+        'yview_moveto': canvas.yview_moveto,
+        'yview': canvas.yview,
+    }
+
+    def _noop(*args, **kwargs):
+        # función que no hace nada (bloquea el scroll)
+        return None
+
+    def disable_canvas_scrolling():
+        """Reemplaza los métodos de scroll del canvas por no-op (bloqueo total)."""
+        canvas.yview_scroll = lambda *a, **k: _noop()
+        canvas.yview_moveto = lambda *a, **k: _noop()
+        # algunos bindings usan .yview directamente
+        canvas.yview = lambda *a, **k: _noop()
+
+    def enable_canvas_scrolling():
+        """Restaura los métodos originales del canvas."""
+        canvas.yview_scroll = original_methods['yview_scroll']
+        canvas.yview_moveto = original_methods['yview_moveto']
+        canvas.yview = original_methods['yview']
+
     # --- Obtener materias ---
     materias_inscritas = db_manager.get_subjects_by_student(student_id)
     materia_widgets_list = []
 
     # --- Funciones de scroll ---
     def _on_mousewheel(event):
+        # Navegación multiplataforma
         if event.delta:
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         else:
@@ -159,6 +185,7 @@ def create_student_subjects_view(parent_frame, user_data):
                 canvas.yview_scroll(1, "units")
 
     def _bind_mousewheel(widget):
+        # enlaza el evento al widget y sus hijos
         widget.bind("<MouseWheel>", _on_mousewheel)
         widget.bind("<Button-4>", _on_mousewheel)
         widget.bind("<Button-5>", _on_mousewheel)
@@ -200,25 +227,21 @@ def create_student_subjects_view(parent_frame, user_data):
 
         # --- DESACTIVAR SCROLL SI SOLO HAY UNA MATERIA ---
         if len(materias_inscritas) == 1:
-            # Desvincular del canvas y frame
+            # Ocultar scrollbar visualmente
+            scrollbar.grid_remove()
+
+            # Desvinculamos handlers que tengamos en canvas/materias_frame (para evitar doble ejecución)
             for widget in [canvas, materias_frame]:
                 widget.unbind("<MouseWheel>")
                 widget.unbind("<Button-4>")
                 widget.unbind("<Button-5>")
 
-            # Desvincular también del único MateriaWidget
-            for w in materia_widgets_list:
-                w.unbind("<MouseWheel>")
-                w.unbind("<Button-4>")
-                w.unbind("<Button-5>")
-                for c in w.winfo_children():
-                    c.unbind("<MouseWheel>")
-                    c.unbind("<Button-4>")
-                    c.unbind("<Button-5>")
-
-            scrollbar.grid_remove()  # Oculta el scrollbar
+            # Ahora bloqueamos el canvas a nivel de API (más robusto)
+            disable_canvas_scrolling()
         else:
-            scrollbar.grid()  # Asegura que el scrollbar esté visible
+            # Restaurar scrollbar y funcionalidad normal
+            scrollbar.grid()
+            enable_canvas_scrolling()
 
     # --- Layout de materias ---
     def layout_materias(event=None):
@@ -239,12 +262,15 @@ def create_student_subjects_view(parent_frame, user_data):
             materias_frame.columnconfigure(c, weight=1)
 
         materias_frame.update_idletasks()
+        # Actualizar el scrollregion con el contenido real
         canvas.configure(scrollregion=canvas.bbox("all"))
         canvas.itemconfig(canvas_window, width=canvas_width)
 
+    # Mantener scrollregion sincronizado
     materias_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
     canvas.bind("<Configure>", layout_materias)
 
+    # Layout inicial
     layout_materias()
 
     return container
