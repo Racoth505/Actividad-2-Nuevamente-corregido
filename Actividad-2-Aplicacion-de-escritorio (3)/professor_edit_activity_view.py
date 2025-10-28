@@ -12,7 +12,7 @@ def create_professor_edit_activity_view(parent_frame, user_data):
     # No pack aún
 
     # --- CORRECCIÓN 1: Centrar el título ---
-    ttk.Label(main_frame, text="Editar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='n', padx=10)
+    ttk.Label(main_frame, text="Editar Actividad", font=("Helvetica", 16, "bold"), style="TLabel").pack(pady=10, anchor='w', padx=10)
 
     selection_frame = ttk.Frame(main_frame, style="Main.TFrame")
     # --- CORRECCIÓN 2: Centrar el frame de selección (quitar fill='x') ---
