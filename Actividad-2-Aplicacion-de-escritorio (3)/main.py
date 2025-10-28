@@ -4,6 +4,7 @@ from tkinter import messagebox, ttk, filedialog
 import os
 import shutil
 from PIL import Image, ImageTk
+import platform
 
 # --- Managers and Styles ---
 import db_manager
@@ -25,7 +26,19 @@ from student_main_view import create_student_main_view # Vista Alumno con Sideba
 db_manager.initialize_database()
 
 # --- Global root window ---
-root = None
+root = tk.Tk()
+
+style = ttk.Style()
+if platform.system() == "Darwin":  # macOS
+    style.theme_use("aqua")
+else:  # Windows u otros
+    style.theme_use("clam")  # Tema compatible con personalización de colores
+
+style.configure("Green.TButton", background="#f0f2f5", foreground="black", font=("Helvetica", 12, "bold"))
+style.map("Green.TButton",
+    background=[("active", "#28a745")], # Color al pasar el ratón
+    foreground=[("active", "white")]
+)
 
 # --- Login Logic ---
 def validate_login(username, password):
@@ -136,6 +149,7 @@ def show_main_app(user_data):
     # Limpiar widgets previos (importante para logout)
     for widget in root.winfo_children():
         widget.destroy()
+
 
     root.title(f"Sistema de Calificaciones - Panel: {role.capitalize()}")
     # Ajustar tamaño según el rol para mejor visualización
